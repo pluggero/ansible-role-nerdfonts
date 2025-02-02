@@ -64,7 +64,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: pip3 install ansible molecule molecule-plugins[vagrant]
+        run: pip3 install molecule molecule-plugins[vagrant]
 
       - name: Install VirtualBox
         run: |
