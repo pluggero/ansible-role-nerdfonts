@@ -1,24 +1,31 @@
 ---
 - name: Ensure nerdfonts are installed
   block:
+    - name: Check if installation directory exists
+      ansible.builtin.stat:
+        path: "{{ nerdfonts_install_dir }}"
+      register: nerdfonts_dir
+
     - name: Check if selected nerdfont (non-mono) is installed
       ansible.builtin.find:
         paths: "{{ nerdfonts_install_dir }}"
         patterns: "{{ nerdfonts_font }}*Regular.ttf"
-      register: nerdfonts_regular
+        file_type: file
+        recurse: true
+      register: nerdfonts_selected
       become: true
-      when: not nerdfonts_mono
+      when:
+        - nerdfonts_dir.stat.exists
 
-    - name: Check if selected nerdfont (mono) is installed
-      ansible.builtin.find:
-        paths: "{{ nerdfonts_install_dir }}"
-        patterns: "{{ nerdfonts_font }}*Mono-Regular.ttf"
-      register: nerdfonts_regular
-      become: true
-      when: nerdfonts_mono
+    - name: Force install if no matches were found
+      ansible.builtin.set_fact:
+        nerdfonts_force_install: true
+      when:
+        - nerdfonts_selected.matched is defined
+        - nerdfonts_selected.matched == 0
 
     - name: Install nerdfonts from source
-      when: (nerdfonts_regular.files | default([]) | length) == 0
+      when: nerdfonts_selected.matched is not defined or nerdfonts_force_install
       block:
         - name: Ensure the installation folder exists
           ansible.builtin.file:
@@ -63,20 +70,6 @@
             remote_src: true
           become: true
           notify: "Update Font Cache"
-
-        - name: "Remove Unwanted fonts"
-          ansible.builtin.command: find {{ nerdfonts_install_dir }} -name '*indows*.ttf' -exec rm {} \+
-          register: remove_windows_fonts
-          changed_when: remove_windows_fonts.stdout | length > 0
-          become: true
-
-        - name: "Remove mono fonts"
-          ansible.builtin.command: find {{ nerdfonts_install_dir }} -name '*Mono.ttf' -exec rm {} \+
-          register: remove_mono_fonts
-          changed_when: remove_mono_fonts.stdout | length > 0
-          become: true
-          become_user: "{{ ansible_user }}"
-          when: not nerdfonts_mono
 
         - name: Remove temporary font files
           ansible.builtin.file:
