@@ -1,0 +1,4 @@
+---
+- name: "Update Font Cache"
+  command: "fc-cache -f {{ nerdfonts_install_dir }}"
+  become: true
